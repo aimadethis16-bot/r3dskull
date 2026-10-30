@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>R3DSKULL Panel v3</title>
+<style>
+:root{--bg:#050000;--panel:#140404;--line:#a30000;--accent:#ff1f1f;--text:#ffd9d9;--dim:#a06060;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font-family:"Courier New",ui-monospace,monospace;overflow:hidden;
+padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);transition:background .3s}
+.win{position:absolute;left:8px;top:50px;width:min(96vw,420px);border:2px solid var(--line);background:var(--panel);box-shadow:0 0 24px var(--accent);z-index:10}
+.bar{display:flex;justify-content:space-between;align-items:center;background:var(--line);color:#fff;padding:9px 12px;
+font-weight:bold;letter-spacing:2px;cursor:grab;touch-action:none;user-select:none}
+.bar button{background:none;border:0;color:#fff;font-size:16px;padding:0 6px}
+.tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--line)}
+.tab{flex:1 0 auto;background:#000;color:var(--dim);border:0;border-right:1px solid var(--line);padding:10px 12px;font:inherit}
+.tab.on{color:var(--accent);background:var(--panel);box-shadow:inset 0 -2px var(--accent)}
+.page{display:none;padding:12px;max-height:60vh;overflow:auto}
+.page.on{display:block}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.act{font:inherit;background:#000;color:var(--accent);border:1px solid var(--line);padding:13px 6px;font-size:15px;touch-action:manipulation}
+.act:active{background:var(--accent);color:#000}
+button:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#log{background:#000;border:1px solid var(--line);height:200px;overflow:auto;padding:8px;font-size:13px;color:var(--accent)}
+.flash{animation:fl .25s 6}
+@keyframes fl{50%{background:var(--accent)}}
+@keyframes shk{25%{transform:translateX(-10px)}75%{transform:translateX(10px)}}
+.shake{animation:shk .1s 8}
+@media (prefers-reduced-motion:reduce){.flash,.shake{animation:none}}
+#dim{position:fixed;inset:0;background:#000;opacity:.85;pointer-events:none;display:none;z-index:5}
+#big{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:20;background:#000;color:var(--accent);
+font-size:12vw;text-align:center;padding:20px;word-break:break-word}
+</style>
+</head>
+<body>
+<div id="dim"></div><div id="big"></div>
+<div class="win" id="win">
+  <div class="bar" id="bar"><span>💀 R3DSKULL v3</span><span><button id="theme" title="Theme">🎨</button><button id="x" title="Close">✕</button></span></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="pages"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const win=$('#win'),root=document.documentElement,body=document.body;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const accent=()=>getComputedStyle(root).getPropertyValue('--accent').trim()||'#ff1f1f';
+let logEl;
+function say(t){if(!logEl)return;const d=document.createElement('div');d.textContent='> '+t;logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight}
+function confetti(e){for(let i=0;i<40;i++){const s=document.createElement('div');s.textContent=e;
+  s.style.cssText=`position:fixed;left:${Math.random()*100}vw;top:-30px;font-size:${18+Math.random()*20}px;z-index:30;pointer-events:none;transition:transform 2s ease-in,opacity 2s`;
+  body.appendChild(s);requestAnimationFrame(()=>{s.style.transform=`translateY(${innerHeight+60}px) rotate(${Math.random()*720}deg)`;s.style.opacity='.2'});
+  setTimeout(()=>s.remove(),2100)}}
+
+/* themes */
+const themes=[['#a30000','#ff1f1f','#140404','#ffd9d9'],['#5b00a3','#c04dff','#10051a','#f0dcff'],
+              ['#006b2e','#2dff7a','#04140a','#d9ffe8'],['#a35a00','#ffa31f','#140c04','#ffecd9'],['#005f8a','#33c8ff','#04101a','#d9f2ff']];
+let ti=0;
+function nextTheme(){ti=(ti+1)%themes.length;const [l,a,p,t]=themes[ti];
+  root.style.setProperty('--line',l);root.style.setProperty('--accent',a);root.style.setProperty('--panel',p);root.style.setProperty('--text',t);say('Theme '+(ti+1)+'/'+themes.length)}
+
+/* state for toggles */
+let sw=null,swStart=0,party=null;
+
+/* ---------- ALL BUTTONS LIVE HERE: ['label', function] ---------- */
+const PAGES={
+ Main:[
+  ['🔥 Fire',()=>{body.classList.add('flash');setTimeout(()=>body.classList.remove('flash'),1600);say('Screen flashed.')}],
+  ['✨ Sparkles',()=>{confetti('✨');say('Sparkles.')}],
+  ['🗣️ Announce',()=>{const t=prompt('Message to announce:');if(t){say('Announcing: '+t);try{speechSynthesis.speak(new SpeechSynthesisUtterance(t))}catch(e){say('Speech not available.')}}}],
+  ['💻 Fake hack',async()=>{for(let p=0;p<=100;p+=20){say('Injecting... '+p+'%');await sleep(450)}say('Just kidding 😈 nothing was touched.')}],
+  ['🎨 Next theme',nextTheme],
+  ['🙈 Hide 3 sec',()=>{win.style.visibility='hidden';setTimeout(()=>win.style.visibility='visible',3000);say('Hidden for 3 sec.')}]
+ ],
+ Visuals:[
+  ['🟥 Rain',()=>{const c=document.createElement('canvas');c.width=innerWidth;c.height=innerHeight;
+    c.style.cssText='position:fixed;inset:0;z-index:4;pointer-events:none';body.appendChild(c);
+    const g=c.getContext('2d'),col=accent(),y=Array(Math.floor(c.width/16)).fill(0);
+    const iv=setInterval(()=>{g.fillStyle='rgba(5,0,0,.15)';g.fillRect(0,0,c.width,c.height);g.fillStyle=col;g.font='16px monospace';
+      y.forEach((v,i)=>{g.fillText(String.fromCharCode(0x30A0+Math.random()*60),i*16,v);y[i]=v>c.height&&Math.random()>.97?0:v+16})},60);
+    setTimeout(()=>{clearInterval(iv);c.remove()},4000);say('Rain 4 sec.')}],
+  ['📺 Glitch',()=>{let n=0;const iv=setInterval(()=>{win.style.transform=`translate(${(Math.random()-.5)*14}px,${(Math.random()-.5)*6}px)`;
+    if(++n>12){clearInterval(iv);win.style.transform=''}},60);say('Glitch.')}],
+  ['🌗 Invert',()=>{const on=root.style.filter==='invert(1)';root.style.filter=on?'':'invert(1)';say('Invert '+(on?'off':'on'))}],
+  ['🌈 Rainbow',()=>{root.style.transition='filter .3s';let h=0;const iv=setInterval(()=>{root.style.filter=`hue-rotate(${h+=30}deg)`},100);
+    setTimeout(()=>{clearInterval(iv);root.style.filter=''},3000);say('Rainbow 3 sec.')}],
+  ['🌀 Spin',()=>{win.style.transition='transform 1s';win.style.transform='rotate(360deg)';setTimeout(()=>{win.style.transition='';win.style.transform=''},1100);say('Spin.')}],
+  ['📳 Shake',()=>{win.classList.add('shake');setTimeout(()=>win.classList.remove('shake'),900);say('Shake.')}],
+  ['🎉 Confetti',()=>{confetti('🎉');say('Confetti.')}],
+  ['💀 Skull rain',()=>{confetti('💀');say('Skulls.')}],
+  ['🌑 Lights off/on',()=>{const d=$('#dim');d.style.display=d.style.display==='block'?'none':'block';say('Dim toggled.')}]
+ ],
+ Tools:[
+  ['🕒 Clock',()=>say(new Date().toLocaleTimeString())],
+  ['📅 Date',()=>say(new Date().toDateString())],
+  ['🪙 Coin flip',()=>say('Coin: '+pick(['Heads','Tails']))],
+  ['🎲 Dice',()=>say('Dice: '+(1+Math.floor(Math.random()*6)))],
+  ['🎨 Random color',()=>{const c='#'+Math.floor(Math.random()*0xffffff).toString(16).padStart(6,'0');body.style.background=c;setTimeout(()=>body.style.background='',2000);say('Color '+c)}],
+  ['🔢 Calculator',()=>{const e=prompt('Math (example: 12*(3+4)):');if(!e)return;
+    if(!/^[0-9+\-*/().% ]+$/.test(e)){say('Only numbers and + - * / ( ) % allowed.');return}
+    try{say(e+' = '+Function('"use strict";return ('+e+')')())}catch(x){say('Bad expression.')}}],
+  ['⏱️ Stopwatch',()=>{if(sw){clearInterval(sw);sw=null;say('Stopped at '+((Date.now()-swStart)/1000).toFixed(2)+'s')}else{swStart=Date.now();sw=setInterval(()=>{},100);say('Stopwatch started. Tap again to stop.')}}],
+  ['⏳ Countdown 10',async()=>{for(let i=10;i>=0;i--){say(i===0?'Time!':String(i));await sleep(1000)}confetti('⏰')}],
+  ['📋 Copy text',async()=>{const t=prompt('Text to copy:');if(!t)return;try{await navigator.clipboard.writeText(t);say('Copied.')}catch(e){say('Copy blocked by this browser.')}}],
+  ['🔤 Big text',()=>{const t=prompt('Text to show big:');if(!t)return;const b=$('#big');b.textContent=t;b.style.display='flex';setTimeout(()=>b.style.display='none',3000)}]
+ ],
+ Fun:[
+  ['📡 Fake ping',async()=>{for(let i=0;i<4;i++){say('Reply from 127.0.0.1: time='+(1+Math.floor(Math.random()*30))+'ms');await sleep(500)}}],
+  ['🔍 Fake scan',async()=>{for(const s of ['Scanning...','Found 0 threats','Found 0 secrets','All clear ✅']){say(s);await sleep(600)}}],
+  ['😂 Joke',()=>say(pick(['I would tell a UDP joke, but you might not get it.','There are 10 kinds of people: those who know binary and those who do not.','My code works. I have no idea why.','Skulls are just bones with good branding.']))],
+  ['🎱 Magic 8-ball',()=>{const q=prompt('Ask a yes/no question:');if(q)say('8-ball: '+pick(['Yes','No','Maybe','Ask again later','Definitely','Doubtful','Signs point to yes']))}],
+  ['🎉 Party mode',()=>{if(party){clearInterval(party);party=null;body.style.background='';say('Party off.')}else{party=setInterval(()=>{body.style.background=`hsl(${Math.random()*360},80%,25%)`},250);say('Party on. Tap again to stop.')}}],
+  ['💬 Fake chat',async()=>{for(const m of ['skull: yo','you: hey','skull: this panel is harmless lol','you: 👍']){say(m);await sleep(700)}}],
+  ['🔊 Say hi',()=>{try{speechSynthesis.speak(new SpeechSynthesisUtterance('Hello from the red skull panel'))}catch(e){say('Speech not available.')}say('Hi.')}],
+  ['😈 Evil laugh',()=>{say('Mwahahaha 😈');try{speechSynthesis.speak(new SpeechSynthesisUtterance('mwa ha ha ha'))}catch(e){}}]
+ ],
+ Log:[]
+};
+
+/* ---------- build UI ---------- */
+const tabs=$('#tabs'),pages=$('#pages');
+Object.keys(PAGES).forEach((name,i)=>{
+  const t=document.createElement('button');t.className='tab'+(i?'':' on');t.textContent=name;tabs.appendChild(t);
+  const p=document.createElement('div');p.className='page'+(i?'':' on');pages.appendChild(p);
+  if(name==='Log'){logEl=document.createElement('div');logEl.id='log';logEl.setAttribute('aria-live','polite');p.appendChild(logEl)}
+  else{const g=document.createElement('div');g.className='grid';p.appendChild(g);
+    PAGES[name].forEach(([label,fn])=>{const b=document.createElement('button');b.className='act';b.textContent=label;b.onclick=fn;g.appendChild(b)})}
+  t.onclick=()=>{[...tabs.children].forEach(x=>x.classList.remove('on'));[...pages.children].forEach(x=>x.classList.remove('on'));t.classList.add('on');p.classList.add('on')};
+});
+say('R3DSKULL v3 ready.');
+
+/* draggable window */
+let drag=null;const bar=$('#bar');
+bar.addEventListener('pointerdown',e=>{if(e.target.closest('button'))return;drag={dx:e.clientX-win.offsetLeft,dy:e.clientY-win.offsetTop};bar.setPointerCapture(e.pointerId)});
+bar.addEventListener('pointermove',e=>{if(!drag)return;
+  win.style.left=Math.max(0,Math.min(innerWidth-win.offsetWidth,e.clientX-drag.dx))+'px';
+  win.style.top=Math.max(0,Math.min(innerHeight-60,e.clientY-drag.dy))+'px'});
+bar.addEventListener('pointerup',()=>drag=null);
+$('#theme').onclick=nextTheme;
+$('#x').onclick=()=>{win.style.display='none'};
+</script>
+</body>
+</html>
